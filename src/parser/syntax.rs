@@ -26,7 +26,7 @@ pub enum BasicNode {
         functions: Vec<NodeRef>,
     },
 
-    #[rule(name: $Ident (parameters: $Ident)* $Let (body: Expr)
+    #[rule(name: $Ident (parameters: $Ident)* $Let (body: Expression)
         ($KwWhere $BracketOpen (local_functions: Function)* $BracketClose)?
         $Semicolon)]
     Function {
@@ -44,8 +44,8 @@ pub enum BasicNode {
         local_functions: Vec<NodeRef>,
     },
 
-    #[rule((values: XorExpr)+{$Comma})]
-    Expr {
+    #[rule((values: XorExpression)+{$Comma})]
+    Expression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -54,8 +54,8 @@ pub enum BasicNode {
         values: Vec<NodeRef>,
     },
 
-    #[rule((values: OrExpr)+{$KwXor})]
-    XorExpr {
+    #[rule((values: OrExpression)+{$KwXor})]
+    XorExpression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -64,8 +64,8 @@ pub enum BasicNode {
         values: Vec<NodeRef>,
     },
 
-    #[rule((values: AndExpr)+{$KwOr})]
-    OrExpr {
+    #[rule((values: AndExpression)+{$KwOr})]
+    OrExpression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -74,8 +74,8 @@ pub enum BasicNode {
         values: Vec<NodeRef>,
     },
 
-    #[rule((values: EqualityExpr)+{$KwAnd})]
-    AndExpr {
+    #[rule((values: EqualityExpression)+{$KwAnd})]
+    AndExpression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -84,10 +84,10 @@ pub enum BasicNode {
         values: Vec<NodeRef>,
     },
 
-    #[rule((lvalue: SumExpr)
+    #[rule((lvalue: SumExpression)
         ((operator: ($Equal | $NotEqual | $Less | $Greater | $GreaterEqual | $LessEqual))
-        rvalue: SumExpr)?)]
-    EqualityExpr {
+        rvalue: SumExpression)?)]
+    EqualityExpression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -100,8 +100,8 @@ pub enum BasicNode {
         operator: TokenRef,
     },
 
-    #[rule((values: MultExpr)+{operators: $Plus | $Minus})]
-    SumExpr {
+    #[rule((values: MultExpression)+{operators: ($Plus | $Minus)})]
+    SumExpression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -112,8 +112,8 @@ pub enum BasicNode {
         operators: Vec<TokenRef>,
     },
 
-    #[rule((values: PipeExpr)+{operators: $Star | $Slash})]
-    MultExpr {
+    #[rule((values: FunctionCall)+{operators: ($Star | $Slash)})]
+    MultExpression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -124,20 +124,8 @@ pub enum BasicNode {
         operators: Vec<TokenRef>,
     },
 
-    #[rule((values: FuncCall)+{operators: $PipeOperator})]
-    PipeExpr {
-        #[node]
-        node: NodeRef,
-        #[parent]
-        parent: NodeRef,
-        #[child]
-        values: Vec<NodeRef>,
-        #[child]
-        operators: Vec<TokenRef>,
-    },
-
-    #[rule((values: UnaryExpr)+)]
-    FuncCall {
+    #[rule((values: UnaryExpression)+)]
+    FunctionCall {
         #[node]
         node: NodeRef,
         #[parent]
@@ -146,8 +134,8 @@ pub enum BasicNode {
         values: Vec<NodeRef>,
     },
 
-    #[rule((op: $Minus | $Exclamation)? value: (Literal | ParenthesesExpr | CaseExpr | LambdaExpr))]
-    UnaryExpr {
+    #[rule((op: $Exclamation)? value: (Literal | ParenthesesExpression | CaseExpression | LambdaExpression))]
+    UnaryExpression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -158,8 +146,8 @@ pub enum BasicNode {
         op: TokenRef,
     },
 
-    #[rule($ParenthesesOpen (value: Expr)? $ParenthesesClose)]
-    ParenthesesExpr {
+    #[rule($ParenthesesOpen (value: Expression)? $ParenthesesClose)]
+    ParenthesesExpression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -168,7 +156,7 @@ pub enum BasicNode {
         value: NodeRef,
     },
 
-    #[rule((value: $Number | $KwTrue | $KwFalse | $Ident))]
+    #[rule(value: ($Number | $KwTrue | $KwFalse | $Ident))]
     Literal {
         #[node]
         node: NodeRef,
@@ -178,8 +166,8 @@ pub enum BasicNode {
         value: TokenRef,
     },
 
-    #[rule($KwLambda (params: $Ident)* $Arrow (body: Expr))]
-    LambdaExpr {
+    #[rule($KwLambda (params: $Ident)* $Arrow (body: Expression))]
+    LambdaExpression {
         #[node]
         node: NodeRef,
         #[parent]
@@ -190,17 +178,17 @@ pub enum BasicNode {
         body: NodeRef,
     },
 
-    #[rule($KwCase (expr: Expr) $KwOf
-        ((cases: Expr) $Arrow (results: Expr) $Semicolon)*
-        ($KwOr $Arrow (default_expr: Expr) $Semicolon)?
+    #[rule($KwCase (arg: Expression) $KwOf
+        ((cases: Expression) $Arrow (results: Expression) $Semicolon)*
+        ($KwOr $Arrow (default_expr: Expression) $Semicolon)?
     $KwEnd)]
-    CaseExpr {
+    CaseExpression {
         #[node]
         node: NodeRef,
         #[parent]
         parent: NodeRef,
         #[child]
-        expr: NodeRef,
+        arg: NodeRef,
         #[child]
         cases: Vec<NodeRef>,
         #[child]

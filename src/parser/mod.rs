@@ -5,7 +5,7 @@ use lady_deirdre::{syntax::NodeRef, units::Document};
 use lexer::BasicToken;
 use syntax::BasicNode;
 
-use crate::interpretator::ast::*;
+use crate::interpreter::ast::*;
 
 pub struct Parser<'a> {
     doc: &'a Document<BasicNode>,
@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_expressions(&self, node: NodeRef) -> Expressions {
-        let Some(BasicNode::Expr { values, .. }) = node.deref(self.doc) else {
+        let Some(BasicNode::Expression { values, .. }) = node.deref(self.doc) else {
             unreachable!();
         };
         let values = values
@@ -58,7 +58,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_xor_expression(&self, node: NodeRef) -> XorExpression {
-        let Some(BasicNode::XorExpr { values, .. }) = node.deref(self.doc) else {
+        let Some(BasicNode::XorExpression { values, .. }) = node.deref(self.doc) else {
             unreachable!();
         };
         let values = values
@@ -69,7 +69,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_or_expression(&self, node: NodeRef) -> OrExpression {
-        let Some(BasicNode::OrExpr { values, .. }) = node.deref(self.doc) else {
+        let Some(BasicNode::OrExpression { values, .. }) = node.deref(self.doc) else {
             unreachable!();
         };
         let values = values
@@ -80,7 +80,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_and_expression(&self, node: NodeRef) -> AndExpression {
-        let Some(BasicNode::AndExpr { values, .. }) = node.deref(self.doc) else {
+        let Some(BasicNode::AndExpression { values, .. }) = node.deref(self.doc) else {
             unreachable!();
         };
         let values = values
@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_eq_expression(&self, node: NodeRef) -> EqualityExpression {
-        let Some(BasicNode::EqualityExpr {
+        let Some(BasicNode::EqualityExpression {
             lvalue,
             rvalue,
             operator,
@@ -121,7 +121,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_sum_expression(&self, node: NodeRef) -> SumExpression {
-        let Some(BasicNode::SumExpr {
+        let Some(BasicNode::SumExpression {
             values, operators, ..
         }) = node.deref(self.doc)
         else {
@@ -153,7 +153,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_mult_expression(&self, node: NodeRef) -> MultExpression {
-        let Some(BasicNode::MultExpr {
+        let Some(BasicNode::MultExpression {
             values, operators, ..
         }) = node.deref(self.doc)
         else {
@@ -161,8 +161,8 @@ impl<'a> Parser<'a> {
         };
         let mut values = values
             .iter()
-            .map(|val| self.parse_pipe_expression(*val))
-            .collect::<Vec<PipeExpression>>();
+            .map(|val| self.parse_func_call(*val))
+            .collect::<Vec<FunctionCall>>();
         let mut operators = operators
             .iter()
             .map(|operator| match operator.deref(self.doc) {
@@ -184,30 +184,25 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_pipe_expression(&self, node: NodeRef) -> PipeExpression {
-        let Some(BasicNode::PipeExpr { values, .. }) = node.deref(self.doc) else {
-            unreachable!();
-        };
-        let values = values
-            .iter()
-            .map(|val| self.parse_func_call(*val))
-            .collect();
-        PipeExpression { values }
-    }
-
     pub fn parse_func_call(&self, node: NodeRef) -> FunctionCall {
-        let Some(BasicNode::FuncCall { values, .. }) = node.deref(self.doc) else {
+        let Some(BasicNode::FunctionCall { values, .. }) = node.deref(self.doc) else {
             unreachable!();
         };
         let args = values
             .iter()
             .map(|val| self.parse_unary_expr(*val))
-            .collect();
-        FunctionCall { args }
+            .collect::<Vec<UnaryExpression>>();
+        let primary = args[0].clone();
+        let args = if args.len() > 1 {
+            args[1..].iter().map(|arg| arg.clone()).collect()
+        } else {
+            vec![]
+        };
+        FunctionCall { primary, args }
     }
 
     pub fn parse_unary_expr(&self, node: NodeRef) -> UnaryExpression {
-        let Some(BasicNode::UnaryExpr { op, value, .. }) = node.deref(self.doc) else {
+        let Some(BasicNode::UnaryExpression { op, value, .. }) = node.deref(self.doc) else {
             unreachable!();
         };
         let value = {
@@ -221,12 +216,12 @@ impl<'a> Parser<'a> {
                     }
                     Some(BasicToken::KwTrue) => BasicExpression::Boolean(true),
                     Some(BasicToken::KwFalse) => BasicExpression::Boolean(false),
-                    _ => unreachable!(),
+                    val => panic!("{:?}", val),
                 },
-                Some(BasicNode::ParenthesesExpr { value, .. }) => {
+                Some(BasicNode::ParenthesesExpression { value, .. }) => {
                     BasicExpression::Parenthesized(self.parse_expressions(*value))
                 }
-                Some(BasicNode::LambdaExpr { params, body, .. }) => {
+                Some(BasicNode::LambdaExpression { params, body, .. }) => {
                     BasicExpression::Lambda(Lambda {
                         params: params
                             .iter()
@@ -235,14 +230,14 @@ impl<'a> Parser<'a> {
                         body: self.parse_expressions(*body),
                     })
                 }
-                Some(BasicNode::CaseExpr {
-                    expr,
+                Some(BasicNode::CaseExpression {
+                    arg,
                     cases,
                     results,
                     default_expr,
                     ..
                 }) => {
-                    let arg = self.parse_expressions(*expr);
+                    let arg = self.parse_expressions(*arg);
                     let cases = cases.iter().map(|expr| self.parse_expressions(*expr));
                     let results = results.iter().map(|expr| self.parse_expressions(*expr));
                     let default = if default_expr.is_valid_ref(self.doc) {

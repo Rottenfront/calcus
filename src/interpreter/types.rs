@@ -1,8 +1,9 @@
 use super::lambda::LambdaState;
 
+#[derive(Debug, Clone)]
 pub enum Value {
     Number(f64),
-    Bool(bool),
+    Boolean(bool),
     Lambda(LambdaState),
-    Array(Vec<Value>),
+    Tuple(Vec<Value>),
 }

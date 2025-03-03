@@ -1,12 +1,6 @@
 use lady_deirdre::lexis::Token;
 
-#[derive(Token, Clone, Copy, PartialEq, Eq)]
-#[define(IDENT = (^['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '=', '[', ']', '{',
-'}', '\\', '|', '\'', '"', ';', ':', '/', '?', ',', '.', '<', '>', '`', '~', '0'..'9', ' ',
-'\t', '\r', '\x0b', '\x0c', '\n']
-& ^['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '+', '=', '[', ']', '{',
-'}', '\\', '|', '\'', '"', ';', ':', '/', '?', ',', '.', '<', '>', '`', '~', ' ', '\t', '\r',
-'\x0b', '\x0c', '\n']*))]
+#[derive(Token, Clone, Copy, PartialEq, Eq, Debug)]
 #[define(HEX = ['0'..'9', 'A'..'F', 'a'..'f'])]
 #[repr(u8)]
 pub enum BasicToken {
@@ -188,6 +182,6 @@ pub enum BasicToken {
     #[rule([' ', '\t', '\n', '\x0c', '\r']+)]
     Whitespace,
 
-    #[rule(IDENT)]
+    #[rule($xid_start & $xid_continue*)]
     Ident,
 }

@@ -4,4 +4,4 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-lady-deirdre = { git = "https://github.com/eliah-lakhin/lady-deirdre.git", branch = "issue-31-exclusion-rule-bug" }
+lady-deirdre = "2.0"

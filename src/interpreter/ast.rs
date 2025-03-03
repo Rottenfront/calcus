@@ -70,8 +70,8 @@ pub enum SumOperator {
 
 #[derive(Debug, Clone)]
 pub struct MultExpression {
-    pub lvalue: PipeExpression,
-    pub rvalues: Vec<(MultOperator, PipeExpression)>,
+    pub lvalue: FunctionCall,
+    pub rvalues: Vec<(MultOperator, FunctionCall)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -81,12 +81,8 @@ pub enum MultOperator {
 }
 
 #[derive(Debug, Clone)]
-pub struct PipeExpression {
-    pub values: Vec<FunctionCall>,
-}
-
-#[derive(Debug, Clone)]
 pub struct FunctionCall {
+    pub primary: UnaryExpression,
     pub args: Vec<UnaryExpression>,
 }
 
