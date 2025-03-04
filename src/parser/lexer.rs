@@ -43,20 +43,6 @@ pub enum BasicToken {
     #[priority(2)]
     KwFalse,
 
-    // #[rule("if")]
-    // #[describe("KW_if")]
-    // #[priority(2)]
-    // KwIf,
-
-    // #[rule("then")]
-    // #[describe("KW_then")]
-    // #[priority(2)]
-    // KwThen,
-
-    // #[rule("else")]
-    // #[describe("KW_else")]
-    // #[priority(2)]
-    // KwElse,
     #[rule("and")]
     #[describe("KW_and")]
     #[priority(2)]

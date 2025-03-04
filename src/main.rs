@@ -1,6 +1,4 @@
-use std::{error, path::PathBuf};
-
-use interpreter::{types::Value, Interpreter};
+use std::path::PathBuf;
 
 pub mod interpreter;
 pub mod parser;
@@ -43,11 +41,4 @@ fn main() {
     let Some(BasicNode::Root { functions, .. }) = tree.deref(&doc) else {
         unreachable!()
     };
-    let parser = parser::Parser::new(&doc);
-    let functions = functions
-        .iter()
-        .map(|func| parser.parse_function(*func))
-        .collect();
-    let mut interpreter = Interpreter { functions };
-    println!("{:?}", interpreter.interpret(0, vec![Value::Number(3.0)]));
 }
