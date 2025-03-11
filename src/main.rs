@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+pub mod cir;
+pub mod compiler;
 pub mod interpreter;
 pub mod parser;
 
