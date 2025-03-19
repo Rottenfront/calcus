@@ -13,6 +13,11 @@ pub enum BasicToken {
     #[priority(2)]
     KwCase,
 
+    #[rule("let")]
+    #[describe("KW_let")]
+    #[priority(2)]
+    KwLet,
+
     #[rule("of")]
     #[describe("KW_of")]
     #[priority(2)]
@@ -109,6 +114,10 @@ pub enum BasicToken {
     #[rule("!")]
     #[describe("!")]
     Exclamation,
+
+    #[rule("~")]
+    #[describe("~")]
+    Tilde,
 
     #[rule("=")]
     #[describe("=")]

@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
+use parser::FunctionExpression;
+
 pub mod cir;
 pub mod compiler;
-pub mod interpreter;
 pub mod parser;
 
 fn main() {
@@ -43,4 +44,10 @@ fn main() {
     let Some(BasicNode::Root { functions, .. }) = tree.deref(&doc) else {
         unreachable!()
     };
+    let parser = parser::Parser::new(&doc);
+    let functions = functions
+        .iter()
+        .map(|func| parser.parse_function(*func))
+        .collect::<Vec<FunctionExpression>>();
+    println!("{:#?}", functions);
 }

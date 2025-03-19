@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use lady_deirdre::lexis::PositionSpan;
 
 pub struct Function {
@@ -10,13 +8,20 @@ pub struct Function {
 }
 
 pub enum StackValue {
-    Constant(Value),
+    Integer(i64),
+    Float(f64),
+    Function {
+        id: usize,
+    },
+    Lambda {
+        id: usize,
+    },
     /// Index of parameter in argument array
     Parameter(usize),
     None,
 }
 
-pub struct Body(Vec<Action>);
+pub struct Body(pub Vec<Action>);
 
 pub enum Action {
     /// This variant cannot return any error, so we do not need to track its
@@ -28,24 +33,20 @@ pub enum Action {
 
     UnaryOperation {
         src: usize,
-        operator: UnaryOperator,
-        /// Position of operator in document
         position: PositionSpan,
+        operator: UnaryOperator,
     },
 
     BinaryOperation {
         lhs: usize,
         rhs: usize,
         operator: BinaryOperator,
-        /// Position of operator in document
-        /// Is None if this is function call without pipe operator
-        op_position: Option<PositionSpan>,
 
         lhs_position: PositionSpan,
         rhs_position: PositionSpan,
     },
 
-    Move {
+    Copy {
         src: usize,
         dist: usize,
     },
@@ -59,14 +60,28 @@ pub enum Action {
     Goto(usize),
 }
 
-pub enum UnaryOperator {
+#[derive(Clone, Debug)]
+pub struct UnaryOperator {
+    pub position: PositionSpan,
+    pub variant: UnaryOperatorVariant,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum UnaryOperatorVariant {
     /// !
     Inversion,
     /// ~
     Negation,
 }
 
-pub enum BinaryOperator {
+#[derive(Clone, Debug)]
+pub struct BinaryOperator {
+    pub position: PositionSpan,
+    pub variant: BinaryOperatorVariant,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum BinaryOperatorVariant {
     Xor,
     Or,
     And,
@@ -87,11 +102,10 @@ pub enum BinaryOperator {
 pub enum Value {
     Integer(i64),
     Float(f64),
-    Lambda(LambdaState),
-    Tuple(Vec<Value>),
+    Lambda { function_id: usize },
 }
 
 pub struct LambdaState {
-    function: Rc<Function>,
-    provided_args: Vec<Value>,
+    pub function: usize,
+    pub provided_args: Vec<Value>,
 }

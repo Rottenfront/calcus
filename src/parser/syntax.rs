@@ -26,8 +26,8 @@ pub enum BasicNode {
         functions: Vec<NodeRef>,
     },
 
-    #[rule(name: $Ident (parameters: $Ident)* $Let (body: TupleExpression)
-        ($KwWhere $BracketOpen (local_functions: Function)* $BracketClose)?
+    #[rule(name: $Ident (params: $Ident)* $Let (body: TupleExpression)
+        ($KwWhere $BracketOpen (local_funcs: Function)* $BracketClose)?
         $Semicolon)]
     Function {
         #[node]
@@ -37,11 +37,11 @@ pub enum BasicNode {
         #[child]
         name: TokenRef,
         #[child]
-        parameters: Vec<TokenRef>,
+        params: Vec<TokenRef>,
         #[child]
         body: NodeRef,
         #[child]
-        local_functions: Vec<NodeRef>,
+        local_funcs: Vec<NodeRef>,
     },
 
     #[rule((values: XorExpression)+{$Comma})]
@@ -196,8 +196,19 @@ pub enum BasicNode {
         body: NodeRef,
     },
 
+    #[rule($KwLet (name: $Ident))]
+    CaseDefinition {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        name: TokenRef,
+    },
+
     #[rule($KwCase (arg: TupleExpression) $KwOf
-        ((cases: TupleExpression) $Arrow (results: TupleExpression) $Semicolon)*
+        ((cases: CaseTemplate)
+            $Arrow (results: TupleExpression) $Semicolon)*
         ($KwOr $Arrow (default_expr: TupleExpression) $Semicolon)?
     $KwEnd)]
     CaseExpression {
@@ -213,5 +224,15 @@ pub enum BasicNode {
         results: Vec<NodeRef>,
         #[child]
         default_expr: NodeRef,
+    },
+
+    #[rule((values: (XorExpression | CaseDefinition))+{$Comma})]
+    CaseTemplate {
+        #[node]
+        node: NodeRef,
+        #[parent]
+        parent: NodeRef,
+        #[child]
+        values: Vec<NodeRef>,
     },
 }
