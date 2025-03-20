@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use cir::Interpreter;
+use compiler::Compiler;
 use parser::FunctionExpression;
 
 pub mod cir;
@@ -50,4 +52,30 @@ fn main() {
         .map(|func| parser.parse_function(*func))
         .collect::<Vec<FunctionExpression>>();
     println!("{:#?}", functions);
+
+    let compiler = Compiler::new(functions);
+    let Compiler {
+        functions,
+        func_names,
+    } = match compiler {
+        Ok(compiler) => compiler,
+        Err(err) => {
+            eprintln!("Error: {:#?}", err);
+            return;
+        }
+    };
+
+    println!("{:#?}", functions);
+
+    let interpreter = Interpreter {
+        functions: &functions,
+    };
+
+    println!(
+        "{:#?}",
+        interpreter.eval_lambda(cir::LambdaState {
+            function: cir::FunctionIdentifier::Defined(func_names["main"]),
+            provided_args: vec![]
+        })
+    );
 }

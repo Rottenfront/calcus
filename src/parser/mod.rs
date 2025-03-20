@@ -28,12 +28,9 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_function(&self, node: NodeRef) -> FunctionExpression {
+        let position = self.get_node_position(&node);
         let Some(BasicNode::Function {
-            name,
-            params,
-            body,
-            local_funcs,
-            ..
+            name, params, body, ..
         }) = node.deref(self.doc)
         else {
             unreachable!();
@@ -43,36 +40,13 @@ impl<'a> Parser<'a> {
             .iter()
             .map(|param| param.string(self.doc).unwrap())
             .collect();
-        let body = self.parse_tuple_expression(*body);
-        let local_funcs = local_funcs
-            .iter()
-            .map(|func| self.parse_function(*func))
-            .collect();
+        let body = self.parse_xor_expression(*body);
 
         FunctionExpression {
             name,
+            position,
             params,
             body,
-            local_funcs,
-        }
-    }
-
-    pub fn parse_tuple_expression(&self, node: NodeRef) -> ValueExpression {
-        let position = self.get_node_position(&node);
-        let Some(BasicNode::TupleExpression { values, .. }) = node.deref(self.doc) else {
-            unreachable!();
-        };
-        let values = values
-            .iter()
-            .map(|val| self.parse_xor_expression(*val))
-            .collect::<Vec<ValueExpression>>();
-        if values.len() > 1 {
-            ValueExpression {
-                position,
-                inner: ValueExpressionInner::Tuple(values),
-            }
-        } else {
-            values[0].clone()
         }
     }
 
@@ -311,6 +285,7 @@ impl<'a> Parser<'a> {
             result.unwrap()
         }
     }
+
     pub fn parse_mult_expression(&self, node: NodeRef) -> ValueExpression {
         let Some(BasicNode::MultExpression {
             values, operators, ..
@@ -432,11 +407,9 @@ impl<'a> Parser<'a> {
         let value = {
             match value.deref(self.doc).unwrap() {
                 BasicNode::Literal { node, .. } => self.parse_literal(*node),
-                BasicNode::ParenthesesExpression { value, .. } => {
-                    self.parse_tuple_expression(*value)
-                }
+                BasicNode::ParenthesesExpression { value, .. } => self.parse_xor_expression(*value),
                 BasicNode::LambdaExpression { node, .. } => self.parse_lambda(*node),
-                BasicNode::CaseExpression { node, .. } => self.parse_case(*node),
+                BasicNode::IfExpression { node, .. } => self.parse_if_expr(*node),
                 _ => unreachable!(),
             }
         };
@@ -488,61 +461,25 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse_case(&self, node: NodeRef) -> ValueExpression {
+    pub fn parse_if_expr(&self, node: NodeRef) -> ValueExpression {
         let position = self.get_node_position(&node);
-        let Some(BasicNode::CaseExpression {
-            arg,
-            cases,
-            results,
-            default_expr,
+        let Some(&BasicNode::IfExpression {
+            cond,
+            if_true,
+            if_false,
             ..
         }) = node.deref(self.doc)
         else {
             unreachable!();
         };
-        let arg = self.parse_tuple_expression(*arg);
-        let cases = cases.iter().map(|expr| self.parse_case_template(*expr));
-        let results = results
-            .iter()
-            .map(|expr| self.parse_tuple_expression(*expr));
-        let default = if default_expr.is_valid_ref(self.doc) {
-            Some(self.parse_tuple_expression(*default_expr))
-        } else {
-            None
-        };
-
         ValueExpression {
             position,
-            inner: ValueExpressionInner::Case(Box::new(CaseExpression {
-                arg,
-                body: cases.zip(results).collect(),
-                default,
+            inner: ValueExpressionInner::If(Box::new(IfExpression {
+                cond: self.parse_xor_expression(cond),
+                if_true: self.parse_xor_expression(if_true),
+                if_false: self.parse_xor_expression(if_false),
             })),
         }
-    }
-
-    pub fn parse_case_template(&self, node: NodeRef) -> Vec<TemplateExpression> {
-        let Some(BasicNode::CaseTemplate { values, .. }) = node.deref(self.doc) else {
-            unreachable!();
-        };
-        values
-            .iter()
-            .map(|val| match val.deref(self.doc).unwrap() {
-                BasicNode::CaseDefinition { name, .. } => {
-                    let position = name
-                        .chunk(self.doc)
-                        .unwrap()
-                        .to_position_span(self.doc)
-                        .unwrap();
-                    let name = name.string(self.doc).unwrap();
-                    TemplateExpression::NewSymbol { name, position }
-                }
-                BasicNode::XorExpression { node, .. } => {
-                    TemplateExpression::Value(self.parse_xor_expression(*node))
-                }
-                _ => unreachable!(),
-            })
-            .collect()
     }
 
     pub fn parse_lambda(&self, node: NodeRef) -> ValueExpression {
@@ -558,7 +495,7 @@ impl<'a> Parser<'a> {
                     .iter()
                     .map(|param| param.string(self.doc).unwrap())
                     .collect(),
-                body: self.parse_tuple_expression(*body),
+                body: self.parse_xor_expression(*body),
             })),
         }
     }
@@ -567,9 +504,9 @@ impl<'a> Parser<'a> {
 #[derive(Clone, Debug)]
 pub struct FunctionExpression<'code> {
     pub name: &'code str,
+    pub position: PositionSpan,
     pub params: Vec<&'code str>,
     pub body: ValueExpression<'code>,
-    pub local_funcs: Vec<FunctionExpression<'code>>,
 }
 
 #[derive(Clone, Debug)]
@@ -606,9 +543,8 @@ pub enum ValueExpressionInner<'code> {
     Bool(bool),
     Integer(i64),
     Float(f64),
-    Case(Box<CaseExpression<'code>>),
-    Tuple(Vec<ValueExpression<'code>>),
     Lambda(Box<LambdaBody<'code>>),
+    If(Box<IfExpression<'code>>),
 }
 
 #[derive(Clone, Debug)]
@@ -618,18 +554,8 @@ pub struct LambdaBody<'code> {
 }
 
 #[derive(Clone, Debug)]
-pub struct CaseExpression<'code> {
-    pub arg: ValueExpression<'code>,
-    pub body: Vec<(Vec<TemplateExpression<'code>>, ValueExpression<'code>)>,
-    pub default: Option<ValueExpression<'code>>,
-}
-
-#[derive(Clone, Debug)]
-pub enum TemplateExpression<'code> {
-    Value(ValueExpression<'code>),
-    /// Definition of new symbol
-    NewSymbol {
-        name: &'code str,
-        position: PositionSpan,
-    },
+pub struct IfExpression<'code> {
+    pub cond: ValueExpression<'code>,
+    pub if_true: ValueExpression<'code>,
+    pub if_false: ValueExpression<'code>,
 }

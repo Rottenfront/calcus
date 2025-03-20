@@ -8,25 +8,19 @@ pub enum BasicToken {
 
     Mismatch = 1,
 
-    #[rule("case")]
-    #[describe("KW_case")]
+    #[rule("if")]
+    #[describe("KW_if")]
     #[priority(2)]
-    KwCase,
+    KwIf,
 
-    #[rule("let")]
-    #[describe("KW_let")]
+    #[rule("then")]
+    #[describe("KW_then")]
     #[priority(2)]
-    KwLet,
-
-    #[rule("of")]
-    #[describe("KW_of")]
+    KwThen,
+    #[rule("else")]
+    #[describe("KW_else")]
     #[priority(2)]
-    KwOf,
-
-    #[rule("end")]
-    #[describe("KW_end")]
-    #[priority(2)]
-    KwEnd,
+    KwElse,
 
     #[rule("where")]
     #[describe("KW_where")]
@@ -63,7 +57,7 @@ pub enum BasicToken {
     #[priority(2)]
     KwXor,
 
-    #[rule(['0'..'9']+ ('.' ['0'..'9']*)?)]
+    #[rule(['0'..'9']+ ('.' ['0'..'9']* ('e' '-'? ['0'..'9']+))?)]
     #[describe("number")]
     Number,
 

@@ -1,5 +1,5 @@
-fib n = case n of
-    0 -> 0;
-    1 -> 1;
-    let n -> fib (n - 1) + fib (n - 2);
-end;
+fib n = if n == 0 then 0
+    else if n == 1 then 1
+    else fib (n - 1) + fib (n - 2);
+
+main = print (fib 8);
