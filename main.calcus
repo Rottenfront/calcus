@@ -1,6 +1,5 @@
-fib n = fibInner n 0 1;
+fib n = if n == 0 then 0
+    else if n == 1 then 1
+    else fib (n - 1) (n - 2);
 
-fibInner n a b = if n == 0 then a + b
-    else fibInner (n - 1) b (a + b);
-
-main = print (fib 3);
+main = print (fib 20);

@@ -1,11 +1,12 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Instant};
 
-use cir::Interpreter;
+use cir::interpreter::Interpreter;
 use compiler::Compiler;
 use parser::FunctionExpression;
 
 pub mod cir;
 pub mod compiler;
+pub mod error_displayer;
 pub mod parser;
 
 fn main() {
@@ -36,7 +37,7 @@ fn main() {
 
     let doc = Document::<BasicNode>::new_immutable(input);
     for error in doc.errors() {
-        println!("Error: {:#?}", error.display(&doc));
+        println!("{:#?}", error.display(&doc));
     }
     if doc.errors().count() != 0 {
         eprintln!("Parsing errors found, stopping");
@@ -70,12 +71,15 @@ fn main() {
     let interpreter = Interpreter {
         functions: &functions,
     };
+    let before = Instant::now();
+    match interpreter.eval_lambda(cir::LambdaState {
+        function: cir::FunctionIdentifier::Defined(func_names["main"]),
+        provided_args: vec![],
+    }) {
+        Ok(value) => println!("{:#?}", value),
+        Err(error) => println!("{:#?}", error.display(&doc)),
+    }
 
-    println!(
-        "{:#?}",
-        interpreter.eval_lambda(cir::LambdaState {
-            function: cir::FunctionIdentifier::Defined(func_names["main"]),
-            provided_args: vec![]
-        })
-    );
+    let after = Instant::now();
+    println!("Time elapsed: {:?}", after - before);
 }

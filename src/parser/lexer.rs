@@ -57,7 +57,7 @@ pub enum BasicToken {
     #[priority(2)]
     KwXor,
 
-    #[rule(['0'..'9']+ ('.' ['0'..'9']* ('e' '-'? ['0'..'9']+))?)]
+    #[rule(['0'..'9']+ ('.' ['0'..'9']* ('e' '-'? ['0'..'9']+)?)?)]
     #[describe("number")]
     Number,
 

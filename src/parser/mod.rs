@@ -28,13 +28,17 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_function(&self, node: NodeRef) -> FunctionExpression {
-        let position = self.get_node_position(&node);
         let Some(BasicNode::Function {
             name, params, body, ..
         }) = node.deref(self.doc)
         else {
             unreachable!();
         };
+        let position = name
+            .chunk(self.doc)
+            .unwrap()
+            .to_position_span(self.doc)
+            .unwrap();
         let name = name.string(self.doc).unwrap();
         let params = params
             .iter()
