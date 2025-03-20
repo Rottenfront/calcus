@@ -640,16 +640,24 @@ impl<'a> Interpreter<'a> {
                 lambda.provided_args.push(lhs_value);
                 Ok(Value::LambdaState(lambda))
             }
-            value => Err(InterpretationError::MismatchedType {
-                position: rhs_position,
-                provided: match value {
-                    Value::Bool(_) => ValueType::Boolean,
-                    Value::Integer(_) | Value::Float(_) => ValueType::Number,
-                    Value::None => ValueType::None,
-                    _ => unreachable!(),
-                },
-                expected: ValueType::Lambda,
-            }),
+            value => {
+                println!("{:#?}", lhs);
+                println!("{:#?}", rhs);
+                println!("{:#?}", lhs_position);
+                println!("{:#?}", rhs_position);
+                println!("{:#?}", lhs_value);
+                println!("{:#?}", value);
+                Err(InterpretationError::MismatchedType {
+                    position: rhs_position,
+                    provided: match value {
+                        Value::Bool(_) => ValueType::Boolean,
+                        Value::Integer(_) | Value::Float(_) => ValueType::Number,
+                        Value::None => ValueType::None,
+                        _ => unreachable!(),
+                    },
+                    expected: ValueType::Lambda,
+                })
+            }
         }
     }
 

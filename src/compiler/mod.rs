@@ -214,8 +214,8 @@ impl<'code> Compiler<'code> {
             self.compile_expr(arg_index, starting_label_index, params, &expr.arg)?;
         let func_index = starting_stack_index + arg_stack.len();
         let (mut func_stack, mut func_actions) = self.compile_expr(
-            starting_stack_index,
-            starting_label_index,
+            starting_stack_index + arg_stack.len(),
+            starting_label_index + arg_actions.len(),
             params,
             &expr.func,
         )?;
