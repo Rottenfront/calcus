@@ -52,7 +52,6 @@ fn main() {
         .iter()
         .map(|func| parser.parse_function(*func))
         .collect::<Vec<FunctionExpression>>();
-    println!("{:#?}", functions);
 
     let compiler = Compiler::new(functions);
     let Compiler {
@@ -61,12 +60,10 @@ fn main() {
     } = match compiler {
         Ok(compiler) => compiler,
         Err(err) => {
-            eprintln!("Error: {:#?}", err);
+            eprintln!("{:#?}", err.display(&doc));
             return;
         }
     };
-
-    println!("{:#?}", functions);
 
     let interpreter = Interpreter {
         functions: &functions,
@@ -77,7 +74,7 @@ fn main() {
         provided_args: vec![],
     }) {
         Ok(value) => println!("{:#?}", value),
-        Err(error) => println!("{:#?}", error.display(&doc)),
+        Err(error) => eprintln!("{:#?}", error.display(&doc)),
     }
 
     let after = Instant::now();

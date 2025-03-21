@@ -1,9 +1,13 @@
 use std::collections::HashMap;
 
-use lady_deirdre::lexis::PositionSpan;
+use lady_deirdre::{
+    format::AnnotationPriority,
+    lexis::{PositionSpan, SourceCode},
+};
 
 use crate::{
     cir::*,
+    error_displayer::DisplayError,
     parser::{
         BinaryExpression, FunctionCall, FunctionExpression, IfExpression, LambdaBody,
         UnaryExpression, ValueExpression, ValueExpressionInner,
@@ -16,9 +20,31 @@ pub struct Compiler<'code> {
     pub func_names: HashMap<&'code str, usize>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CompilationError {
     NameNotFound(PositionSpan),
+}
+
+impl CompilationError {
+    pub fn display<'a, C: SourceCode>(self, source: &'a C) -> DisplayError<'a, C> {
+        let message;
+        let annotations;
+        match self {
+            CompilationError::NameNotFound(position) => {
+                message = format!("Cannot find symbol in this scope");
+                annotations = vec![(
+                    position,
+                    AnnotationPriority::Default,
+                    "Cannot find symbol in this scope".to_string(),
+                )];
+            }
+        }
+        DisplayError {
+            source,
+            message,
+            annotations,
+        }
+    }
 }
 
 impl<'code> Compiler<'code> {
