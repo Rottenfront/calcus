@@ -1,5 +1,6 @@
 pub mod error;
 pub mod interpreter;
+pub mod std_funcs;
 
 pub use error::*;
 
@@ -116,12 +117,7 @@ pub enum Value {
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionIdentifier {
     Defined(usize),
-    BuiltIn(BuiltInFunction),
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum BuiltInFunction {
-    Print,
+    BuiltIn(std_funcs::BuiltInFunction),
 }
 
 #[derive(Debug, Clone)]

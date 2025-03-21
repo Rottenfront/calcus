@@ -5,7 +5,7 @@ use lady_deirdre::{
 
 use crate::error_displayer::DisplayError;
 
-use super::{BinaryOperator, FunctionDescription};
+use super::{std_funcs, BinaryOperator, FunctionDescription};
 
 #[derive(Debug, Clone)]
 pub enum InterpretationError {
@@ -31,6 +31,16 @@ pub enum InterpretationError {
         function: FunctionDescription,
         provided: usize,
         expected: usize,
+    },
+    InvalidArgumentCountBuiltInFunction {
+        function: std_funcs::BuiltInFunction,
+        provided: usize,
+        expected: usize,
+    },
+    InvalidArgumentTypeBuiltInFunction {
+        function: std_funcs::BuiltInFunction,
+        provided: ValueType,
+        expected: ValueType,
     },
 }
 
@@ -135,6 +145,40 @@ impl InterpretationError {
                     AnnotationPriority::Default,
                     "This function".to_string(),
                 )];
+            }
+            InterpretationError::InvalidArgumentCountBuiltInFunction {
+                function,
+                provided,
+                expected,
+            } => {
+                message = format!(
+                    "Invalid function count for function {}\nExpected: {expected}, provided: {provided}",
+                    std_funcs::get_name(function)
+                );
+                annotations = vec![];
+            }
+            InterpretationError::InvalidArgumentTypeBuiltInFunction {
+                function,
+                provided,
+                expected,
+            } => {
+                let expected = match expected {
+                    ValueType::None => "none",
+                    ValueType::Number => "number",
+                    ValueType::Boolean => "bool",
+                    ValueType::Lambda => "lambda",
+                };
+                let provided = match provided {
+                    ValueType::None => "none",
+                    ValueType::Number => "number",
+                    ValueType::Boolean => "bool",
+                    ValueType::Lambda => "lambda",
+                };
+                message = format!(
+                    "Invalid function argument for function {}\nExpected: {expected}, provided: {provided}",
+                    std_funcs::get_name(function)
+                );
+                annotations = vec![];
             }
         }
         DisplayError {

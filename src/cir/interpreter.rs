@@ -1,3 +1,5 @@
+use std_funcs::{get_arg_count, BuiltInFunction};
+
 use super::*;
 
 pub struct Interpreter<'a> {
@@ -233,14 +235,9 @@ impl<'a> Interpreter<'a> {
         lhs_position: PositionSpan,
         rhs_position: PositionSpan,
     ) -> Result<Value, InterpretationError> {
-        let lhs_value = match stack[lhs].clone() {
-            Value::LambdaState(lambda_state) => self.eval_lambda(lambda_state)?,
-            value => value,
-        };
-        let rhs_value = match stack[rhs].clone() {
-            Value::LambdaState(lambda_state) => self.eval_lambda(lambda_state)?,
-            value => value,
-        };
+        let lhs_value = self.evaluate(stack[lhs].clone())?;
+        let rhs_value = self.evaluate(stack[rhs].clone())?;
+
         if let Value::None = rhs_value {
             return Ok(lhs_value);
         }
@@ -296,14 +293,8 @@ impl<'a> Interpreter<'a> {
         lhs_position: PositionSpan,
         rhs_position: PositionSpan,
     ) -> Result<Value, InterpretationError> {
-        let lhs_value = match stack[lhs].clone() {
-            Value::LambdaState(lambda_state) => self.eval_lambda(lambda_state)?,
-            value => value,
-        };
-        let rhs_value = match stack[rhs].clone() {
-            Value::LambdaState(lambda_state) => self.eval_lambda(lambda_state)?,
-            value => value,
-        };
+        let lhs_value = self.evaluate(stack[lhs].clone())?;
+        let rhs_value = self.evaluate(stack[rhs].clone())?;
 
         #[derive(PartialEq, Clone, Copy)]
         enum ExprValue {
@@ -396,14 +387,8 @@ impl<'a> Interpreter<'a> {
         lhs_position: PositionSpan,
         rhs_position: PositionSpan,
     ) -> Result<Value, InterpretationError> {
-        let lhs_value = match stack[lhs].clone() {
-            Value::LambdaState(lambda_state) => self.eval_lambda(lambda_state)?,
-            value => value,
-        };
-        let rhs_value = match stack[rhs].clone() {
-            Value::LambdaState(lambda_state) => self.eval_lambda(lambda_state)?,
-            value => value,
-        };
+        let lhs_value = self.evaluate(stack[lhs].clone())?;
+        let rhs_value = self.evaluate(stack[rhs].clone())?;
 
         macro_rules! matcher {
             ($lhs:expr, $rhs:expr) => {
@@ -596,19 +581,109 @@ impl<'a> Interpreter<'a> {
         function: BuiltInFunction,
         params: Vec<Value>,
     ) -> Result<Value, InterpretationError> {
+        if let Some(arg_count) = get_arg_count(function) {
+            if params.len() != arg_count {
+                return Err(InterpretationError::InvalidArgumentCountBuiltInFunction {
+                    function,
+                    provided: params.len(),
+                    expected: arg_count,
+                });
+            }
+        }
         match function {
             BuiltInFunction::Print => self.print(params),
+            BuiltInFunction::Sin => self.sin(params),
+            BuiltInFunction::Cos => self.cos(params),
+            BuiltInFunction::Tan => self.tan(params),
+            BuiltInFunction::Log2 => self.log2(params),
+            BuiltInFunction::Ln => self.ln(params),
+            BuiltInFunction::Log => self.log(params),
+            BuiltInFunction::Asin => self.asin(params),
+            BuiltInFunction::Acos => self.acos(params),
+            BuiltInFunction::Atan => self.atan(params),
         }
     }
 
     fn print(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
         for param in params {
-            let value = match param {
-                Value::LambdaState(lambda_state) => self.eval_lambda(lambda_state)?,
-                value => value,
-            };
+            let value = self.evaluate(param);
             println!("{:#?}", value);
         }
         Ok(Value::None)
+    }
+
+    fn get_float(function: BuiltInFunction, value: &Value) -> Result<f64, InterpretationError> {
+        match value {
+            Value::None => Err(InterpretationError::InvalidArgumentTypeBuiltInFunction {
+                function,
+                provided: ValueType::None,
+                expected: ValueType::Number,
+            }),
+            Value::Integer(int) => Ok(*int as f64),
+            Value::Float(float) => Ok(*float),
+            Value::Bool(_) => Err(InterpretationError::InvalidArgumentTypeBuiltInFunction {
+                function,
+                provided: ValueType::Boolean,
+                expected: ValueType::Number,
+            }),
+            Value::LambdaState(_) => Err(InterpretationError::InvalidArgumentTypeBuiltInFunction {
+                function,
+                provided: ValueType::Lambda,
+                expected: ValueType::Number,
+            }),
+        }
+    }
+
+    fn sin(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
+        let float = Self::get_float(BuiltInFunction::Sin, &params[0])?;
+        Ok(Value::Float(float.sin()))
+    }
+
+    fn cos(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
+        let float = Self::get_float(BuiltInFunction::Cos, &params[0])?;
+        Ok(Value::Float(float.cos()))
+    }
+
+    fn tan(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
+        let float = Self::get_float(BuiltInFunction::Tan, &params[0])?;
+        Ok(Value::Float(float.tan()))
+    }
+
+    fn asin(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
+        let float = Self::get_float(BuiltInFunction::Asin, &params[0])?;
+        Ok(Value::Float(float.asin()))
+    }
+
+    fn acos(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
+        let float = Self::get_float(BuiltInFunction::Acos, &params[0])?;
+        Ok(Value::Float(float.acos()))
+    }
+
+    fn atan(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
+        let float = Self::get_float(BuiltInFunction::Atan, &params[0])?;
+        Ok(Value::Float(float.atan()))
+    }
+
+    fn log2(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
+        let float = Self::get_float(BuiltInFunction::Log2, &params[0])?;
+        Ok(Value::Float(float.log2()))
+    }
+
+    fn ln(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
+        let float = Self::get_float(BuiltInFunction::Ln, &params[0])?;
+        Ok(Value::Float(float.ln()))
+    }
+
+    fn log(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
+        let base = Self::get_float(BuiltInFunction::Log2, &params[0])?;
+        let arg = Self::get_float(BuiltInFunction::Log2, &params[0])?;
+        Ok(Value::Float(arg.log(base)))
+    }
+
+    fn evaluate(&self, value: Value) -> Result<Value, InterpretationError> {
+        match value {
+            Value::LambdaState(lambda_state) => self.eval_lambda(lambda_state),
+            value => Ok(value),
+        }
     }
 }

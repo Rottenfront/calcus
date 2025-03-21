@@ -349,11 +349,9 @@ impl<'code> Compiler<'code> {
                 });
             }
         }
-        match name {
-            "print" => Ok(StackValue::Function(FunctionIdentifier::BuiltIn(
-                BuiltInFunction::Print,
-            ))),
-            _ => Err(CompilationError::NameNotFound(position)),
+        match std_funcs::find_name(name) {
+            Some(func) => Ok(StackValue::Function(FunctionIdentifier::BuiltIn(func))),
+            None => Err(CompilationError::NameNotFound(position)),
         }
     }
 }

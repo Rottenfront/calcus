@@ -1,9 +1,1 @@
-rem a b = a - (a / b) * b;
-
-isPrime x = isPrimeInner x 2;
-
-isPrimenner x i = if i * i > x then true
-    else if rem x i == 0 then false
-    else isPrimeInner x (i + 1);
-
-main = print (isPrime 47);
+main = print (sin 3.14);
