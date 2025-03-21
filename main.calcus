@@ -1,5 +1,9 @@
-fib n = if n == 0 then 0
-    else if n == 1 then 1
-    else fib (n - 1) (n - 2);
+rem a b = a - (a / b) * b;
 
-main = print (fib 20);
+isPrime x = isPrimeInner x 2;
+
+isPrimeInner x i = if i * i > x then true
+    else if rem x i == 0 then false
+    else isPrimeInner x (i + 1);
+
+main = print (isPrime 47);

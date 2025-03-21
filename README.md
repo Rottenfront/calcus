@@ -122,3 +122,42 @@ if <expr> then <expr> else <expr>
 - Унарные операторы
 - Вызов функции
 - Бинарные операторы
+
+## Примеры
+
+Функция нахождения остатка целочисленного деления:
+
+```
+rem a b = a - (a / b) * b;
+```
+
+Функция Фибоначчи:
+
+```
+fib n = if n == 0 then 0
+    else if n == 1 then 1
+    else fib (n - 1) + fib (n - 2);
+```
+
+Линейная функция Фибоначчи:
+
+```
+fib n a b = if n == 0 then b
+    else fib (n - 1) b (a + b);
+```
+
+Экспоненциальное возведение в степень:
+
+```
+pow x p = if p == 0 then 1
+    else if rem p 2 == 0 then pow (x * x) (p / 2)
+    else pow (x * x) (p / 2) * x;
+```
+
+Алгоритм Евклида для нахождения НОД:
+
+```
+gcd a b = if a == 0 or b == 0 then a + b
+    else if a > b then gcd (rem a b) b
+    else gcd a (rem b a);
+```
