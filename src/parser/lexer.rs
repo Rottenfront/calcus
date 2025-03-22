@@ -32,6 +32,11 @@ pub enum BasicToken {
     #[priority(2)]
     KwLambda,
 
+    #[rule("none")]
+    #[describe("KW_none")]
+    #[priority(2)]
+    KwNone,
+
     #[rule("true")]
     #[describe("KW_true")]
     #[priority(2)]

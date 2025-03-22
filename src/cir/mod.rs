@@ -1,6 +1,7 @@
 pub mod error;
 pub mod interpreter;
 pub mod std_funcs;
+pub mod type_checker;
 
 pub use error::*;
 

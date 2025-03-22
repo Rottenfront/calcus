@@ -1,4 +1,5 @@
 use std_funcs::{get_arg_count, BuiltInFunction};
+use type_checker::ValueType;
 
 use super::*;
 
@@ -235,6 +236,15 @@ impl<'a> Interpreter<'a> {
         lhs_position: PositionSpan,
         rhs_position: PositionSpan,
     ) -> Result<Value, InterpretationError> {
+        macro_rules! mismatch_type {
+            ($position:expr, $provided:ident) => {
+                return Err(InterpretationError::MismatchedType {
+                    position: $position,
+                    provided: ValueType::$provided,
+                    expected: ValueType::Boolean,
+                })
+            };
+        }
         let lhs_value = self.evaluate(stack[lhs].clone())?;
         let rhs_value = self.evaluate(stack[rhs].clone())?;
 
@@ -244,36 +254,20 @@ impl<'a> Interpreter<'a> {
         let lhs_value = match lhs_value {
             Value::None => return Ok(rhs_value),
             Value::Integer(_) | Value::Float(_) => {
-                return Err(InterpretationError::MismatchedType {
-                    position: lhs_position,
-                    provided: ValueType::Number,
-                    expected: ValueType::Boolean,
-                })
+                mismatch_type!(lhs_position, Number)
             }
             Value::Bool(bool) => bool,
             Value::LambdaState(_) => {
-                return Err(InterpretationError::MismatchedType {
-                    position: lhs_position,
-                    provided: ValueType::Lambda,
-                    expected: ValueType::Boolean,
-                })
+                mismatch_type!(lhs_position, Lambda)
             }
         };
         let rhs_value = match rhs_value {
             Value::Integer(_) | Value::Float(_) => {
-                return Err(InterpretationError::MismatchedType {
-                    position: rhs_position,
-                    provided: ValueType::Number,
-                    expected: ValueType::Boolean,
-                })
+                mismatch_type!(rhs_position, Number)
             }
             Value::Bool(bool) => bool,
             _ => {
-                return Err(InterpretationError::MismatchedType {
-                    position: rhs_position,
-                    provided: ValueType::Lambda,
-                    expected: ValueType::Boolean,
-                })
+                mismatch_type!(rhs_position, Lambda)
             }
         };
         Ok(Value::Bool(match operator.variant {
@@ -293,6 +287,15 @@ impl<'a> Interpreter<'a> {
         lhs_position: PositionSpan,
         rhs_position: PositionSpan,
     ) -> Result<Value, InterpretationError> {
+        macro_rules! mismatch_type {
+            ($position:expr, $provided:ident) => {
+                return Err(InterpretationError::MismatchedType {
+                    position: $position,
+                    provided: ValueType::$provided,
+                    expected: ValueType::Number,
+                })
+            };
+        }
         let lhs_value = self.evaluate(stack[lhs].clone())?;
         let rhs_value = self.evaluate(stack[rhs].clone())?;
 
@@ -334,35 +337,19 @@ impl<'a> Interpreter<'a> {
             | BinaryOperatorVariant::GreaterEqual => {
                 let lhs_value = match lhs_value {
                     ExprValue::None => {
-                        return Err(InterpretationError::MismatchedType {
-                            position: rhs_position,
-                            provided: ValueType::None,
-                            expected: ValueType::Number,
-                        });
+                        mismatch_type!(lhs_position, None)
                     }
                     ExprValue::Bool(_) => {
-                        return Err(InterpretationError::MismatchedType {
-                            position: rhs_position,
-                            provided: ValueType::Boolean,
-                            expected: ValueType::Number,
-                        });
+                        mismatch_type!(lhs_position, Boolean)
                     }
                     ExprValue::Float(float) => float,
                 };
                 let rhs_value = match rhs_value {
                     ExprValue::None => {
-                        return Err(InterpretationError::MismatchedType {
-                            position: rhs_position,
-                            provided: ValueType::None,
-                            expected: ValueType::Number,
-                        });
+                        mismatch_type!(rhs_position, None)
                     }
                     ExprValue::Bool(_) => {
-                        return Err(InterpretationError::MismatchedType {
-                            position: rhs_position,
-                            provided: ValueType::Boolean,
-                            expected: ValueType::Number,
-                        });
+                        mismatch_type!(rhs_position, Boolean)
                     }
                     ExprValue::Float(float) => float,
                 };
@@ -606,9 +593,16 @@ impl<'a> Interpreter<'a> {
 
     fn print(&self, params: Vec<Value>) -> Result<Value, InterpretationError> {
         for param in params {
-            let value = self.evaluate(param);
-            println!("{:#?}", value);
+            let value = self.evaluate(param)?;
+            match value {
+                Value::None => print!("none "),
+                Value::Integer(int) => print!("{int} "),
+                Value::Float(float) => print!("{float} "),
+                Value::Bool(bool) => print!("{bool} "),
+                Value::LambdaState(lambda_state) => println!("\n {lambda_state:?}"),
+            }
         }
+        println!();
         Ok(Value::None)
     }
 

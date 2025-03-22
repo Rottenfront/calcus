@@ -451,6 +451,7 @@ impl<'a> Parser<'a> {
         ValueExpression {
             position,
             inner: match value.deref(self.doc).unwrap() {
+                BasicToken::KwNone => ValueExpressionInner::None,
                 BasicToken::KwTrue => ValueExpressionInner::Bool(true),
                 BasicToken::KwFalse => ValueExpressionInner::Bool(false),
                 BasicToken::Number => match value.string(self.doc).unwrap().parse() {
@@ -540,6 +541,7 @@ pub struct ValueExpression<'code> {
 
 #[derive(Clone, Debug)]
 pub enum ValueExpressionInner<'code> {
+    None,
     Binary(Box<BinaryExpression<'code>>),
     Unary(Box<UnaryExpression<'code>>),
     FuncCall(Box<FunctionCall<'code>>),

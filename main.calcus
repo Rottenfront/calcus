@@ -1,1 +1,8 @@
-main = print (sin 3.14);
+hanoi n source target auxiliary =
+    if n == 0 then none
+    else
+        hanoi (n - 1) source auxiliary target and
+        print source target and
+        hanoi (n - 1) auxiliary target source;
+
+main = print (hanoi 6 0 1 2);

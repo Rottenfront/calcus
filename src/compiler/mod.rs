@@ -144,6 +144,7 @@ impl<'code> Compiler<'code> {
                 Ok((vec![value], vec![]))
             }
             ValueExpressionInner::Bool(bool) => Ok((vec![StackValue::Bool(*bool)], vec![])),
+            ValueExpressionInner::None => Ok((vec![StackValue::None], vec![])),
             ValueExpressionInner::Integer(integer) => {
                 Ok((vec![StackValue::Integer(*integer)], vec![]))
             }

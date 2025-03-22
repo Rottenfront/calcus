@@ -182,3 +182,14 @@ isPrimeInner x i = if i * i > x then true
     else if rem x i == 0 then false
     else isPrimeInner x (i + 1);
 ```
+
+Задача о Ханойских башнях:
+
+```
+hanoi n source target auxiliary =
+    if n == 0 then print
+    else
+        hanoi (n - 1) source auxiliary target and
+        print source target and
+        hanoi (n - 1) auxiliary target source;
+```

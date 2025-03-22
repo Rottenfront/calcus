@@ -161,7 +161,7 @@ pub enum BasicNode {
         value: NodeRef,
     },
 
-    #[rule(value: ($Number | $KwTrue | $KwFalse | $Ident))]
+    #[rule(value: ($Number | $KwTrue | $KwFalse | $Ident | $KwNone))]
     Literal {
         #[node]
         node: NodeRef,

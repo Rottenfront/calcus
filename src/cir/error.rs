@@ -5,7 +5,7 @@ use lady_deirdre::{
 
 use crate::error_displayer::DisplayError;
 
-use super::{std_funcs, BinaryOperator, FunctionDescription};
+use super::{std_funcs, type_checker::ValueType, BinaryOperator, FunctionDescription};
 
 #[derive(Debug, Clone)]
 pub enum InterpretationError {
@@ -42,14 +42,6 @@ pub enum InterpretationError {
         provided: ValueType,
         expected: ValueType,
     },
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ValueType {
-    None,
-    Number,
-    Boolean,
-    Lambda,
 }
 
 impl InterpretationError {
