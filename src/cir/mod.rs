@@ -17,7 +17,6 @@ pub struct FunctionDescription {
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub description: FunctionDescription,
     pub params_count: usize,
     /// Last value of stack is returned
     pub stack: Vec<StackValue>,

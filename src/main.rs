@@ -1,8 +1,8 @@
-use std::{path::PathBuf, time::Instant};
+use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use cir::interpreter::Interpreter;
 use compiler::Compiler;
-use parser::FunctionExpression;
+use parser::Parser;
 
 pub mod cir;
 pub mod compiler;
@@ -47,17 +47,27 @@ fn main() {
     let Some(BasicNode::Root { functions, .. }) = tree.deref(&doc) else {
         unreachable!()
     };
-    let parser = parser::Parser::new(&doc);
-    let functions = functions
-        .iter()
-        .map(|func| parser.parse_function(*func))
-        .collect::<Vec<FunctionExpression>>();
+    let mut functions_names = HashMap::new();
+    for (index, function) in functions.iter().enumerate() {
+        let BasicNode::Function { name, .. } = function.deref(&doc).unwrap() else {
+            unreachable!()
+        };
+        let name = name.string(&doc).unwrap();
+        functions_names.insert(name, index);
+    }
+    let mut parsed_functions = Vec::with_capacity(functions.len());
+    for function in functions {
+        match Parser::parse_function(&doc, &functions_names, *function) {
+            Ok(function) => parsed_functions.push(function),
+            Err(err) => {
+                eprintln!("{:#?}", err.display(&doc));
+                return;
+            }
+        }
+    }
 
-    let compiler = Compiler::new(functions);
-    let Compiler {
-        functions,
-        func_names,
-    } = match compiler {
+    let compiler = Compiler::new(parsed_functions);
+    let Compiler { functions } = match compiler {
         Ok(compiler) => compiler,
         Err(err) => {
             eprintln!("{:#?}", err.display(&doc));
@@ -70,7 +80,7 @@ fn main() {
     };
     let before = Instant::now();
     match interpreter.eval_lambda(cir::LambdaState {
-        function: cir::FunctionIdentifier::Defined(func_names["main"]),
+        function: cir::FunctionIdentifier::Defined(functions_names["main"]),
         provided_args: vec![],
     }) {
         Ok(value) => println!("{:#?}", value),

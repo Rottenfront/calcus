@@ -14,13 +14,6 @@ impl<'a> Interpreter<'a> {
         args: Vec<Value>,
     ) -> Result<Value, InterpretationError> {
         let function = &self.functions[function];
-        if args.len() < function.params_count {
-            return Err(InterpretationError::NotEnoughArguments {
-                function: function.description.clone(),
-                provided: args.len(),
-                expected: function.params_count,
-            });
-        }
         let mut stack = function
             .stack
             .iter()
@@ -296,6 +289,17 @@ impl<'a> Interpreter<'a> {
                 })
             };
         }
+        macro_rules! mismatch_types {
+            ($left:ident, $right:ident) => {
+                return Err(InterpretationError::MismatchedTypes {
+                    lhs_position,
+                    rhs_position,
+                    operator: operator.clone(),
+                    type_left: ValueType::$left,
+                    type_right: ValueType::$right,
+                })
+            };
+        }
         let lhs_value = self.evaluate(stack[lhs].clone())?;
         let rhs_value = self.evaluate(stack[rhs].clone())?;
 
@@ -303,13 +307,13 @@ impl<'a> Interpreter<'a> {
         enum ExprValue {
             None,
             Bool(bool),
-            Float(f64),
+            Number(f64),
         }
 
         let lhs_value = match lhs_value {
             Value::None => ExprValue::None,
-            Value::Integer(int) => ExprValue::Float(int as f64),
-            Value::Float(float) => ExprValue::Float(float),
+            Value::Integer(int) => ExprValue::Number(int as f64),
+            Value::Float(float) => ExprValue::Number(float),
             Value::Bool(bool) => ExprValue::Bool(bool),
             Value::LambdaState(_) => {
                 return Err(InterpretationError::CannotUseLambdaInExpression(
@@ -319,8 +323,8 @@ impl<'a> Interpreter<'a> {
         };
         let rhs_value = match rhs_value {
             Value::None => ExprValue::None,
-            Value::Integer(int) => ExprValue::Float(int as f64),
-            Value::Float(float) => ExprValue::Float(float),
+            Value::Integer(int) => ExprValue::Number(int as f64),
+            Value::Float(float) => ExprValue::Number(float),
             Value::Bool(bool) => ExprValue::Bool(bool),
             Value::LambdaState(_) => {
                 return Err(InterpretationError::CannotUseLambdaInExpression(
@@ -329,8 +333,35 @@ impl<'a> Interpreter<'a> {
             }
         };
         Ok(Value::Bool(match operator.variant {
-            BinaryOperatorVariant::Equals => lhs_value == rhs_value,
-            BinaryOperatorVariant::NotEquals => lhs_value != rhs_value,
+            BinaryOperatorVariant::Equals | BinaryOperatorVariant::NotEquals => match lhs_value {
+                ExprValue::None => match rhs_value {
+                    ExprValue::None => match operator.variant {
+                        BinaryOperatorVariant::Equals => true,
+                        BinaryOperatorVariant::NotEquals => false,
+                        _ => unreachable!(),
+                    },
+                    ExprValue::Bool(_) => mismatch_types!(None, Boolean),
+                    ExprValue::Number(_) => mismatch_types!(None, Number),
+                },
+                ExprValue::Bool(lhs) => match rhs_value {
+                    ExprValue::None => mismatch_types!(Boolean, None),
+                    ExprValue::Bool(rhs) => match operator.variant {
+                        BinaryOperatorVariant::Equals => lhs == rhs,
+                        BinaryOperatorVariant::NotEquals => lhs != rhs,
+                        _ => unreachable!(),
+                    },
+                    ExprValue::Number(_) => mismatch_types!(Boolean, Number),
+                },
+                ExprValue::Number(lhs) => match rhs_value {
+                    ExprValue::None => mismatch_types!(Number, None),
+                    ExprValue::Bool(_) => mismatch_types!(Number, Boolean),
+                    ExprValue::Number(rhs) => match operator.variant {
+                        BinaryOperatorVariant::Equals => lhs == rhs,
+                        BinaryOperatorVariant::NotEquals => lhs != rhs,
+                        _ => unreachable!(),
+                    },
+                },
+            },
             BinaryOperatorVariant::Less
             | BinaryOperatorVariant::LessEqual
             | BinaryOperatorVariant::Greater
@@ -342,7 +373,7 @@ impl<'a> Interpreter<'a> {
                     ExprValue::Bool(_) => {
                         mismatch_type!(lhs_position, Boolean)
                     }
-                    ExprValue::Float(float) => float,
+                    ExprValue::Number(float) => float,
                 };
                 let rhs_value = match rhs_value {
                     ExprValue::None => {
@@ -351,7 +382,7 @@ impl<'a> Interpreter<'a> {
                     ExprValue::Bool(_) => {
                         mismatch_type!(rhs_position, Boolean)
                     }
-                    ExprValue::Float(float) => float,
+                    ExprValue::Number(float) => float,
                 };
                 match operator.variant {
                     BinaryOperatorVariant::Less => lhs_value < rhs_value,
@@ -544,17 +575,7 @@ impl<'a> Interpreter<'a> {
                             args
                         },
                     }),
-                    value => {
-                        if remains.is_empty() {
-                            Ok(value)
-                        } else {
-                            Err(InterpretationError::TooMuchArguments {
-                                function: self.functions[index].description.clone(),
-                                expected: arg_count,
-                                provided: lambda.provided_args.len(),
-                            })
-                        }
-                    }
+                    value => Ok(value),
                 }
             }
             FunctionIdentifier::BuiltIn(built_in_function) => {

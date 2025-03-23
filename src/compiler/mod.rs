@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use lady_deirdre::{
     format::AnnotationPriority,
     lexis::{PositionSpan, SourceCode},
@@ -15,9 +13,8 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Compiler<'code> {
+pub struct Compiler {
     pub functions: Vec<Function>,
-    pub func_names: HashMap<&'code str, usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,25 +44,17 @@ impl CompilationError {
     }
 }
 
-impl<'code> Compiler<'code> {
+impl<'code> Compiler {
     pub fn new(functions: Vec<FunctionExpression<'code>>) -> Result<Self, CompilationError> {
         let compiler = Self {
             functions: vec![
                 Function {
-                    description: Default::default(),
                     params_count: 0,
                     stack: vec![],
                     body: vec![]
                 };
                 functions.len()
             ],
-            func_names: {
-                let mut names = HashMap::new();
-                for (index, func) in functions.iter().enumerate() {
-                    names.insert(func.name, index);
-                }
-                names
-            },
         };
         compiler.compile_functions(functions)
     }
@@ -75,32 +64,20 @@ impl<'code> Compiler<'code> {
         functions: Vec<FunctionExpression<'code>>,
     ) -> Result<Self, CompilationError> {
         for (index, func) in functions.into_iter().enumerate() {
-            self.functions[index] = self.compile_function(
-                Some(func.name.to_string()),
-                func.position.clone(),
-                &func.params,
-                &func.body,
-            )?;
+            self.functions[index] = self.compile_function(func.params.len(), &func.body)?;
         }
         Ok(self)
     }
 
     fn compile_function(
         &mut self,
-        name: Option<String>,
-        position: PositionSpan,
-        params: &Vec<&'code str>,
+        params_count: usize,
         body: &ValueExpression<'code>,
     ) -> Result<Function, CompilationError> {
-        let mut params_table = HashMap::new();
-        for (index, param) in params.iter().enumerate() {
-            params_table.insert(*param, index);
-        }
-        let (stack, body) = self.compile_expr(0, 0, &params_table, body)?;
+        let (stack, body) = self.compile_expr(0, 0, body)?;
 
         Ok(Function {
-            description: FunctionDescription { name, position },
-            params_count: params.len(),
+            params_count,
             stack,
             body,
         })
@@ -110,38 +87,27 @@ impl<'code> Compiler<'code> {
         &mut self,
         starting_stack_index: usize,
         starting_label_index: usize,
-        params: &HashMap<&'code str, usize>,
         expr: &ValueExpression<'code>,
     ) -> Result<(Vec<StackValue>, Vec<Action>), CompilationError> {
         match &expr.inner {
             ValueExpressionInner::Binary(binary_expression) => self.compile_binary_expr(
                 starting_stack_index,
                 starting_label_index,
-                params,
                 binary_expression,
             ),
             ValueExpressionInner::Unary(unary_expression) => self.compile_unary_expr(
                 starting_stack_index,
                 starting_label_index,
-                params,
                 unary_expression,
             ),
-            ValueExpressionInner::FuncCall(function_call) => self.compile_func_call(
-                starting_stack_index,
-                starting_label_index,
-                params,
-                function_call,
-            ),
-            ValueExpressionInner::Ident(name) => {
-                let value = Self::find_name(
-                    name,
-                    expr.position.clone(),
-                    &[
-                        (params, RepoType::Parameter),
-                        (&mut self.func_names, RepoType::Function),
-                    ],
-                )?;
-                Ok((vec![value], vec![]))
+            ValueExpressionInner::FuncCall(function_call) => {
+                self.compile_func_call(starting_stack_index, starting_label_index, function_call)
+            }
+            ValueExpressionInner::Parameter(index) => {
+                Ok((vec![StackValue::Parameter(*index)], vec![]))
+            }
+            ValueExpressionInner::Function(ident) => {
+                Ok((vec![StackValue::Function(*ident)], vec![]))
             }
             ValueExpressionInner::Bool(bool) => Ok((vec![StackValue::Bool(*bool)], vec![])),
             ValueExpressionInner::None => Ok((vec![StackValue::None], vec![])),
@@ -149,15 +115,10 @@ impl<'code> Compiler<'code> {
                 Ok((vec![StackValue::Integer(*integer)], vec![]))
             }
             ValueExpressionInner::Float(float) => Ok((vec![StackValue::Float(*float)], vec![])),
-            ValueExpressionInner::Lambda(lambda_body) => {
-                self.compile_lambda(expr.position.clone(), lambda_body)
+            ValueExpressionInner::Lambda(lambda_body) => self.compile_lambda(lambda_body),
+            ValueExpressionInner::If(if_expression) => {
+                self.compile_if_expr(starting_stack_index, starting_label_index, if_expression)
             }
-            ValueExpressionInner::If(if_expression) => self.compile_if_expr(
-                starting_stack_index,
-                starting_label_index,
-                params,
-                if_expression,
-            ),
         }
     }
 
@@ -165,7 +126,6 @@ impl<'code> Compiler<'code> {
         &mut self,
         starting_stack_index: usize,
         starting_label_index: usize,
-        params: &HashMap<&'code str, usize>,
         expr: &BinaryExpression<'code>,
     ) -> Result<(Vec<StackValue>, Vec<Action>), CompilationError> {
         let mut stack = vec![];
@@ -173,17 +133,12 @@ impl<'code> Compiler<'code> {
 
         let lhs_index = starting_stack_index;
 
-        let (mut lhs_stack, mut lhs_actions) = self.compile_expr(
-            starting_stack_index,
-            starting_label_index,
-            params,
-            &expr.lhs,
-        )?;
+        let (mut lhs_stack, mut lhs_actions) =
+            self.compile_expr(starting_stack_index, starting_label_index, &expr.lhs)?;
         let rhs_index = starting_stack_index + lhs_stack.len();
         let (mut rhs_stack, mut rhs_actions) = self.compile_expr(
             rhs_index,
             starting_label_index + lhs_actions.len(),
-            params,
             &expr.rhs,
         )?;
         stack.append(&mut lhs_stack);
@@ -205,17 +160,12 @@ impl<'code> Compiler<'code> {
         &mut self,
         starting_stack_index: usize,
         starting_label_index: usize,
-        params: &HashMap<&'code str, usize>,
         expr: &UnaryExpression<'code>,
     ) -> Result<(Vec<StackValue>, Vec<Action>), CompilationError> {
         let index = starting_stack_index;
 
-        let (stack, mut actions) = self.compile_expr(
-            starting_stack_index,
-            starting_label_index,
-            params,
-            &expr.operand,
-        )?;
+        let (stack, mut actions) =
+            self.compile_expr(starting_stack_index, starting_label_index, &expr.operand)?;
         actions.push(Action::UnaryOperation {
             src: index,
             position: expr.operand.position.clone(),
@@ -229,7 +179,6 @@ impl<'code> Compiler<'code> {
         &mut self,
         starting_stack_index: usize,
         starting_label_index: usize,
-        params: &HashMap<&'code str, usize>,
         expr: &FunctionCall<'code>,
     ) -> Result<(Vec<StackValue>, Vec<Action>), CompilationError> {
         let mut stack = vec![];
@@ -238,12 +187,11 @@ impl<'code> Compiler<'code> {
         let arg_index = starting_stack_index;
 
         let (mut arg_stack, mut arg_actions) =
-            self.compile_expr(arg_index, starting_label_index, params, &expr.arg)?;
+            self.compile_expr(arg_index, starting_label_index, &expr.arg)?;
         let func_index = starting_stack_index + arg_stack.len();
         let (mut func_stack, mut func_actions) = self.compile_expr(
             starting_stack_index + arg_stack.len(),
             starting_label_index + arg_actions.len(),
-            params,
             &expr.func,
         )?;
         stack.append(&mut arg_stack);
@@ -268,21 +216,15 @@ impl<'code> Compiler<'code> {
         &mut self,
         starting_stack_index: usize,
         starting_label_index: usize,
-        params: &HashMap<&'code str, usize>,
         expr: &IfExpression<'code>,
     ) -> Result<(Vec<StackValue>, Vec<Action>), CompilationError> {
         // compile condition
-        let (mut stack, mut actions) = self.compile_expr(
-            starting_stack_index,
-            starting_label_index,
-            params,
-            &expr.cond,
-        )?;
+        let (mut stack, mut actions) =
+            self.compile_expr(starting_stack_index, starting_label_index, &expr.cond)?;
         // compile if_true with offset 1 (conditional jump)
         let (mut then_stack, mut then_actions) = self.compile_expr(
             starting_stack_index + stack.len(),
             starting_label_index + actions.len() + 1,
-            params,
             &expr.if_true,
         )?;
         then_actions.push(Action::Copy {
@@ -302,7 +244,6 @@ impl<'code> Compiler<'code> {
         let (mut else_stack, mut else_actions) = self.compile_expr(
             starting_stack_index + stack.len(),
             starting_label_index + actions.len() + 1,
-            params,
             &expr.if_false,
         )?;
         else_actions.push(Action::Copy {
@@ -320,44 +261,18 @@ impl<'code> Compiler<'code> {
 
     fn compile_lambda(
         &mut self,
-        position: PositionSpan,
         body: &LambdaBody<'code>,
     ) -> Result<(Vec<StackValue>, Vec<Action>), CompilationError> {
         let index = self.functions.len();
         self.functions.push(Function {
-            description: Default::default(),
             params_count: 0,
             stack: vec![],
             body: vec![],
         });
-        self.functions[index] = self.compile_function(None, position, &body.params, &body.body)?;
+        self.functions[index] = self.compile_function(body.params.len(), &body.body)?;
         Ok((
             vec![StackValue::Function(FunctionIdentifier::Defined(index))],
             vec![],
         ))
     }
-
-    fn find_name(
-        name: &str,
-        position: PositionSpan,
-        repos: &[(&HashMap<&str, usize>, RepoType)],
-    ) -> Result<StackValue, CompilationError> {
-        for (repo, repo_type) in repos {
-            if let Some(index) = repo.get(&name) {
-                return Ok(match repo_type {
-                    RepoType::Parameter => StackValue::Parameter(*index),
-                    RepoType::Function => StackValue::Function(FunctionIdentifier::Defined(*index)),
-                });
-            }
-        }
-        match std_funcs::find_name(name) {
-            Some(func) => Ok(StackValue::Function(FunctionIdentifier::BuiltIn(func))),
-            None => Err(CompilationError::NameNotFound(position)),
-        }
-    }
-}
-
-enum RepoType {
-    Parameter,
-    Function,
 }
